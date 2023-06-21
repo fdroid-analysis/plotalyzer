@@ -16,3 +16,10 @@ Now you need to adapt the `db.json` which contains the credentials for the datab
 
 The first parameter is the path to the db conf. The second the id of the experiment ot be analyzed. The third parameter is the output path for the json file to be created (file path required!).
 Afterwards you choose an action to execute. Each action is documented within the app and provides information via the `-h` flag.
+
+E.g., to analyze the consent dialogs collected run:
+
+```
+$> ./scala-plotalyzer db.conf <ID> ./consent-test.json consentDialog analyze
+...
+```
