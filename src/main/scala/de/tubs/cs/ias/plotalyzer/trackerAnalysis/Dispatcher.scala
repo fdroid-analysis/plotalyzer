@@ -67,17 +67,17 @@ object Dispatcher {
     */
   def extractPIIByEndpoints(
       requests: List[Request]): (Map[Request, List[PII]], List[Request]) = {
-    val reamaining: ListBuffer[Request] = new ListBuffer()
+    val remaining: ListBuffer[Request] = new ListBuffer()
     val hits: MMap[Request, List[PII]] = MMap()
     requests.foreach { request =>
       val ret = endpointParser.flatMap(_.parse(request))
       if (ret.nonEmpty) {
         hits.addOne(request -> ret)
       } else {
-        reamaining.addOne(request)
+        remaining.addOne(request)
       }
     }
-    (hits.toMap, reamaining.toList)
+    (hits.toMap, remaining.toList)
   }
 
   /** extracts contained PII based on the string indicators provided by the conf

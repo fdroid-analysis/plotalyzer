@@ -12,14 +12,21 @@ import wvlet.log.LogSupport
 import java.io.File
 import java.time.ZonedDateTime
 
-class InterfaceAnalysis(id: Int,
-                        experiment: Int,
-                        app: MobileApp,
-                        description: String,
-                        start: ZonedDateTime,
-                        end: ZonedDateTime,
-                        success: Boolean)(implicit database: Database)
+class InterfaceAnalysis(
+    id: Int,
+    experiment: Int,
+    app: MobileApp,
+    description: String,
+    start: ZonedDateTime,
+    end: ZonedDateTime,
+    success: Boolean
+)(implicit database: Database)
     extends LogSupport {
+
+  private var appPreferences: Option[List[AppPreferences]] = None
+  private var trafficCollections: Option[List[TrafficCollection]] = None
+  private var interfaceChain: Option[InterfaceInteractionChain] = None
+  private var errors: Option[List[InterfaceAnalysisError]] = None
 
   def dumpScreenshot(baseFolder: String): Unit = {
     val folder = new File(baseFolder + "/" + getDescription.replace(' ', '_'))
@@ -28,37 +35,8 @@ class InterfaceAnalysis(id: Int,
     getInterfaceChain.dumpScreenshots(folder.getPath + "/")
   }
 
-  def getId: Int = id
-  def getExperimentId: Int = experiment
-  def getApp: MobileApp = app
   def getDescription: String = description
-  def getStart: ZonedDateTime = start
-  def getEnd: ZonedDateTime = end
-  def getSuccess: Boolean = success
 
-  private var appPreferences: Option[List[AppPreferences]] = None
-  def getAppPreferences: List[AppPreferences] = synchronized {
-    appPreferences match {
-      case Some(value) => value
-      case None =>
-        appPreferences = Some(AppPreferences.get(this))
-        appPreferences.get
-    }
-  }
-
-  private var trafficCollections: Option[List[TrafficCollection]] = None
-  def getTrafficCollection: List[TrafficCollection] = synchronized {
-    trafficCollections match {
-      case Some(value) => value
-      case None =>
-        trafficCollections = Some(
-          TrafficCollectionCache.getTrafficCollections(this.getExperimentId,
-                                                       this.getId))
-        trafficCollections.get
-    }
-  }
-
-  private var interfaceChain: Option[InterfaceInteractionChain] = None
   def getInterfaceChain: InterfaceInteractionChain = synchronized {
     interfaceChain match {
       case Some(value) => value
@@ -68,13 +46,42 @@ class InterfaceAnalysis(id: Int,
     }
   }
 
-  private var errors: Option[List[InterfaceAnalysisError]] = None
+  def getApp: MobileApp = app
+
+  def getStart: ZonedDateTime = start
+
+  def getEnd: ZonedDateTime = end
+
+  def getSuccess: Boolean = success
+
+  def getAppPreferences: List[AppPreferences] = synchronized {
+    appPreferences match {
+      case Some(value) => value
+      case None =>
+        appPreferences = Some(AppPreferences.get(this))
+        appPreferences.get
+    }
+  }
+
+  def getTrafficCollection: List[TrafficCollection] = synchronized {
+    trafficCollections match {
+      case Some(value) => value
+      case None =>
+        trafficCollections =
+          Some(TrafficCollectionCache.getTrafficCollections(this.getExperimentId, this.getId))
+        trafficCollections.get
+    }
+  }
+
+  def getId: Int = id
+
+  def getExperimentId: Int = experiment
+
   def getErrors: List[InterfaceAnalysisError] = synchronized {
     errors match {
       case Some(value) => value
       case None =>
-        errors =
-          Some(InterfaceAnalysisError.getInterfaceAnalysisErrors(List(getId)))
+        errors = Some(InterfaceAnalysisError.getInterfaceAnalysisErrors(List(getId)))
         errors.get
     }
   }
@@ -85,21 +92,7 @@ class InterfaceAnalysis(id: Int,
 
 object InterfaceAnalysis {
 
-  def apply(entity: WrappedResultSet)(
-      implicit database: Database): InterfaceAnalysis = {
-    new InterfaceAnalysis(
-      entity.int("id"),
-      entity.int("experiment"),
-      MobileApp(entity),
-      entity.string("description"),
-      entity.zonedDateTime("start_time"),
-      entity.zonedDateTime("end_time"),
-      entity.boolean("success")
-    )
-  }
-
-  def get(experiment: Experiment)(
-      implicit database: Database): List[InterfaceAnalysis] = {
+  def get(experiment: Experiment)(implicit database: Database): List[InterfaceAnalysis] = {
     database.withDatabaseSession { implicit session =>
       sql"""SELECT id,
                      experiment,
@@ -116,8 +109,21 @@ object InterfaceAnalysis {
     }
   }
 
-  def get(experiment: Experiment, app: String)(
-      implicit database: Database): List[InterfaceAnalysis] = {
+  def apply(entity: WrappedResultSet)(implicit database: Database): InterfaceAnalysis = {
+    new InterfaceAnalysis(
+      entity.int("id"),
+      entity.int("experiment"),
+      MobileApp(entity),
+      entity.string("description"),
+      entity.zonedDateTime("start_time"),
+      entity.zonedDateTime("end_time"),
+      entity.boolean("success")
+    )
+  }
+
+  def get(experiment: Experiment, app: String)(implicit
+      database: Database
+  ): List[InterfaceAnalysis] = {
     database.withDatabaseSession { implicit session =>
       sql"""SELECT id,
                      experiment,

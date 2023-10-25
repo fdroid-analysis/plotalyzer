@@ -8,23 +8,34 @@ import scala.io.Source
 
 trait AnalysisRule {
 
+  /** The traffic collection analysis configuration */
   def conf: TrafficCollectionAnalysisConfig
-  def prepare(analysis: List[InterfaceAnalysis])
-    : (String, Option[AppRequestTrackingEndpointAnalysis])
+
+  /** Creates an AppRequestTrackingEndpointAnalysis for the traffic of an experiment during the traffic
+   * analysis period
+    * @param analysis List of InterfaceAnalysis
+    * @return
+    */
+  def prepare(
+      analysis: List[InterfaceAnalysis]
+  ): (String, Option[AppRequestTrackingEndpointAnalysis])
 }
 
-case class Regular(descr: String,
-                   override val conf: TrafficCollectionAnalysisConfig)
-    extends AnalysisRule {
+case class Regular(
+    descr: String,
+    override val conf: TrafficCollectionAnalysisConfig
+) extends AnalysisRule {
 
-  override def prepare(analysis: List[InterfaceAnalysis])
-    : (String, Option[AppRequestTrackingEndpointAnalysis]) = {
+  override def prepare(
+      analysis: List[InterfaceAnalysis]
+  ): (String, Option[AppRequestTrackingEndpointAnalysis]) = {
     analysis.find(_.getDescription == descr) match {
-      case Some(value) =>
-        val initial = value.getTrafficCollection.flatMap(_.getRequests)
+      case Some(analysis) =>
+        val allRequests = analysis.getTrafficCollection.flatMap(_.getRequests)
         val traffic = AppRequestTrackingEndpointAnalysis.maxTimespan(
-          initial,
-          conf.timespanSec)
+          allRequests,
+          conf.timespanSec
+        )
         (descr, Some(new AppRequestTrackingEndpointAnalysis(traffic, conf)))
       case None =>
         (descr, None)
@@ -33,14 +44,16 @@ case class Regular(descr: String,
 
 }
 
-case class Minus(minuend: String,
-                 subtrahend: String,
-                 override val conf: TrafficCollectionAnalysisConfig)
-    extends AnalysisRule
+case class Minus(
+    minuend: String,
+    subtrahend: String,
+    override val conf: TrafficCollectionAnalysisConfig
+) extends AnalysisRule
     with LogSupport {
 
-  override def prepare(analysis: List[InterfaceAnalysis])
-    : (String, Option[AppRequestTrackingEndpointAnalysis]) = {
+  override def prepare(
+      analysis: List[InterfaceAnalysis]
+  ): (String, Option[AppRequestTrackingEndpointAnalysis]) = {
     val operation = s"${this.minuend} - ${this.subtrahend}"
     val subtrAna = analysis.find(_.getDescription == subtrahend)
     val minuendAna = analysis.find(_.getDescription == minuend)
@@ -53,7 +66,8 @@ case class Minus(minuend: String,
           .maxTimespan(minuendTraffic, conf.timespanSec)
         val minuendAnalysis = new AppRequestTrackingEndpointAnalysis(
           minuendTrafficFilteredByTime,
-          conf)
+          conf
+        )
         val reqs = minuendAnalysis.getRequestCount
         val subtrahendTraffic =
           subtrahendV.getTrafficCollection.flatMap(_.getRequests)
@@ -61,7 +75,8 @@ case class Minus(minuend: String,
           .maxTimespan(subtrahendTraffic, conf.timespanSec)
         val subtrahendAnalysis = new AppRequestTrackingEndpointAnalysis(
           subtrahendTrafficFilteredByTime,
-          conf)
+          conf
+        )
 
         val ret = (operation, Some(minuendAnalysis - subtrahendAnalysis))
         assert(ret._2.get.getRequestCount == reqs)
@@ -79,15 +94,16 @@ case class Minus(minuend: String,
 
 }
 
-/**
-  *
-  * @param relevantEndpointHosts all hosts that are considered a relevant endpoint for traffic analysis
-  * @param analyze rules on what interface analysis to analyze, either the name, or a delta i.e., IfaceDescrA OPERAND+ IfaceDescrB
+/** @param relevantEndpointHosts all hosts that are considered a relevant endpoint for traffic analysis
+  * @param analyze rules on what interface analysis to analyze, either the name, or a delta i.e., IfaceDescrA
+ *                OPERAND+ IfaceDescrB
   * @param timespanSec the time in seconds which are considered part of the traffic analysis
   */
-case class TrafficCollectionAnalysisConfig(relevantEndpointHosts: List[String],
-                                           analyze: List[String],
-                                           timespanSec: Long) {
+case class TrafficCollectionAnalysisConfig(
+    relevantEndpointHosts: List[String],
+    analyze: List[String],
+    timespanSec: Long
+) {
 
   def getAnalysisRules: List[AnalysisRule] = {
     val ret: List[AnalysisRule] = analyze.map { rule =>
@@ -113,7 +129,7 @@ case class TrafficCollectionAnalysisConfig(relevantEndpointHosts: List[String],
 object TrafficCollectionAnalysisConfig extends DefaultJsonProtocol {
 
   implicit val trafficCollectionAnalysisConfig
-    : RootJsonFormat[TrafficCollectionAnalysisConfig] =
+      : RootJsonFormat[TrafficCollectionAnalysisConfig] =
     jsonFormat3(TrafficCollectionAnalysisConfig.apply)
 
   def get(path: String): TrafficCollectionAnalysisConfig = {

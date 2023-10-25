@@ -21,7 +21,7 @@ class BasicExperimentSummary(interfaceAnalysis: List[InterfaceAnalysis]) {
         Future { interfaceAnalysis.map(_.getApp).toSet.size },
         Future {
           interfaceAnalysis.filter(_.getErrors.isEmpty).map(_.getApp).toSet.size
-        },
+        }
       )
     }
     Await.result(fut, Inf)
@@ -33,33 +33,7 @@ class BasicExperimentSummary(interfaceAnalysis: List[InterfaceAnalysis]) {
     (reqs.length, reqs.count(_.error.isEmpty))
   }
 
-  private def getAppStats: JsObject = {
-    val base = interfaceAnalysis.groupBy(_.getApp)
-    val stat: List[(MobileApp, Int)] =
-      base.map(pair => (pair._1, pair._2.length)).toList
-    val statNoError: List[(MobileApp, Int)] =
-      base.map(pair => (pair._1, pair._2.count(_.getErrors.isEmpty))).toList
-    val agg: Map[Int, Int] =
-      stat.groupBy(_._2).map(tuple => (tuple._1, tuple._2.length))
-    val aggNoError: Map[Int, Int] =
-      statNoError.groupBy(_._2).map(tuple => (tuple._1, tuple._2.length))
-    JsObject(
-      "avg" -> JsNumber(stat.map(_._2).sum.toDouble / stat.length),
-      "avgNoError" -> JsNumber(
-        statNoError.map(_._2).sum.toDouble / stat.length),
-      "appStats" -> JsObject(
-        (agg.keySet ++ aggNoError.keySet).map { key =>
-          key.toString -> JsObject(
-            "count" -> JsNumber(agg.getOrElse(key, 0)),
-            "countNoError" -> JsNumber(aggNoError.getOrElse(key, 0)),
-          )
-        }.toMap
-      )
-    )
-  }
-
-  /**
-    * {
+  /** {
     *   analyzedApps : <NUMBER>,
     *   analyzedAppsNoError : <NUMBER>,
     *   interfaceAnalysis : {
@@ -100,12 +74,39 @@ class BasicExperimentSummary(interfaceAnalysis: List[InterfaceAnalysis]) {
     )
   }
 
+  private def getAppStats: JsObject = {
+    val base = interfaceAnalysis.groupBy(_.getApp)
+    val analysisCountPerApp: List[(MobileApp, Int)] =
+      base.map(pair => (pair._1, pair._2.length)).toList
+    val analysisNoErrorCountPerApp: List[(MobileApp, Int)] =
+      base.map(pair => (pair._1, pair._2.count(_.getErrors.isEmpty))).toList
+    val appCountPerAnalysisCount: Map[Int, Int] =
+      analysisCountPerApp.groupBy(_._2).map(tuple => (tuple._1, tuple._2.length))
+    val appCountNoErrorPerAnalysisCount: Map[Int, Int] =
+      analysisNoErrorCountPerApp.groupBy(_._2).map(tuple => (tuple._1, tuple._2.length))
+    JsObject(
+      "avgAnalysisCountPerApp" -> JsNumber(analysisCountPerApp.map(_._2).sum.toDouble / analysisCountPerApp.length),
+      "avgAnalysisCountNoErrorPerApp" -> JsNumber(
+        analysisNoErrorCountPerApp.map(_._2).sum.toDouble / analysisCountPerApp.length
+      ),
+      "analysisCountPerApp" -> JsObject(
+        (appCountPerAnalysisCount.keySet ++ appCountNoErrorPerAnalysisCount.keySet).map { key =>
+          key.toString -> JsObject(
+            "count" -> JsNumber(appCountPerAnalysisCount.getOrElse(key, 0)),
+            "countNoError" -> JsNumber(appCountNoErrorPerAnalysisCount.getOrElse(key, 0))
+          )
+        }.toMap
+      )
+    )
+  }
+
 }
 
 object BasicExperimentSummary {
 
-  def apply(experiment: Experiment)(
-      implicit database: Database): BasicExperimentSummary =
+  def apply(experiment: Experiment)(implicit
+      database: Database
+  ): BasicExperimentSummary =
     new BasicExperimentSummary(InterfaceAnalysis.get(experiment))
 
 }

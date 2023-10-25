@@ -25,11 +25,7 @@
     ".*yandex.net"
   ],
   "analyze" : [
-    "[CDA] initial traffic collection",
-    "[CDA] accepting consent",
-    "[CDA] rejecting consent",
-    "[CDA] accepting consent OPERAND- [CDA] initial traffic collection",
-    "[CDA] rejecting consent OPERAND- [CDA] initial traffic collection"
+    "Simple Traffic Collection"
   ],
   "timespanSec" : 60
 }
