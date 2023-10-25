@@ -1,25 +1,27 @@
 package de.tubs.cs.ias.plotalyzer.database
 
 import de.halcony.argparse.ParsingResult
+import de.tubs.cs.ias.plotalyzer.database.Database.connectionPools
 import scala.collection.mutable.HashSet
 import scalikejdbc.{ConnectionPool, ConnectionPoolSettings, DB, DBSession, using}
 
-class Database(val POOL_NAME: String) {
+class Database(val poolName: String) {
   def withDatabaseSession[T](func: DBSession => T): T = {
-    try {
-      using(ConnectionPool(POOL_NAME).borrow()) { con =>
+    if (connectionPools.contains(poolName)) {
+      using(ConnectionPool(poolName).borrow()) { con =>
         DB(con).localTx { session => func(session) }
       }
-    } catch {
-      case _: Throwable =>
-        throw new RuntimeException("there is no postgres connection pool, initialize first")
+    } else {
+      throw new RuntimeException(
+        s"there is no '$poolName' postgres connection pool, initialize first"
+      )
     }
   }
 }
 
 object Database {
   private val POOL_NAME = "plotalyzer"
-  private val pools: HashSet[String] = new HashSet[String]
+  private val connectionPools: HashSet[String] = new HashSet[String]
 
   implicit def default: Database = new Database(POOL_NAME)
 
@@ -43,12 +45,12 @@ object Database {
       database: String,
       poolName: String
   ): Unit = {
-    if (!pools.contains(poolName)) {
+    if (!connectionPools.contains(poolName)) {
       val settings: ConnectionPoolSettings =
         ConnectionPoolSettings(initialSize = 10, maxSize = 10, driverName = "org.postgresql.Driver")
       val url = s"jdbc:postgresql://$host:$port/$database"
       ConnectionPool.add(poolName, url, user, pwd, settings)
-      pools.add(poolName)
+      connectionPools.add(poolName)
     }
   }
 }
