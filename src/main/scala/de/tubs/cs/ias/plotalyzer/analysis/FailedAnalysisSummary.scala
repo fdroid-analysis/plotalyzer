@@ -9,7 +9,7 @@ import spray.json.{JsArray, JsNumber, JsObject, JsString, JsValue}
 
 class FailedAnalysisSummary(analysis: List[InterfaceAnalysis]) {
 
-  private val failedAnalysis = analysis.filter(_.getErrors.nonEmpty)
+  private val failedAnalysis = analysis.filter(_.getInterfaceErrors.nonEmpty)
   private val failedApps = failedAnalysis.map(_.getApp).distinct
 
   /** generates a JsObject that pretty prints to the specs below

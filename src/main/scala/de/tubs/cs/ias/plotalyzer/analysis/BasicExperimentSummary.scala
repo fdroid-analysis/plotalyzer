@@ -20,7 +20,7 @@ class BasicExperimentSummary(interfaceAnalysis: List[InterfaceAnalysis]) {
       List(
         Future { interfaceAnalysis.map(_.getApp).toSet.size },
         Future {
-          interfaceAnalysis.filter(_.getErrors.isEmpty).map(_.getApp).toSet.size
+          interfaceAnalysis.filter(_.getInterfaceErrors.isEmpty).map(_.getApp).toSet.size
         }
       )
     }
@@ -61,12 +61,12 @@ class BasicExperimentSummary(interfaceAnalysis: List[InterfaceAnalysis]) {
       "analyzedAppsNoError" -> JsNumber(analyzedAppsNoError),
       "interfaceAnalysis" -> JsObject(
         "count" -> JsNumber(interfaceAnalysis.length),
-        "noError" -> JsNumber(interfaceAnalysis.count(_.getErrors.isEmpty)),
-        "success" -> JsNumber(interfaceAnalysis.count(_.getSuccess)),
+        "noError" -> JsNumber(interfaceAnalysis.count(_.getInterfaceErrors.isEmpty)),
+        "success" -> JsNumber(interfaceAnalysis.count(_.isSuccess)),
         "interfaces" -> JsString("N/A"),
         "interfacesWithScreenshot" -> JsString("NA"),
         "appStats" -> getAppStats
-      ),
+        ),
       "requests" -> JsObject(
         "count" -> JsNumber(requests),
         "countNoError" -> JsNumber(requestNoError)
@@ -79,7 +79,7 @@ class BasicExperimentSummary(interfaceAnalysis: List[InterfaceAnalysis]) {
     val analysisCountPerApp: List[(MobileApp, Int)] =
       base.map(pair => (pair._1, pair._2.length)).toList
     val analysisNoErrorCountPerApp: List[(MobileApp, Int)] =
-      base.map(pair => (pair._1, pair._2.count(_.getErrors.isEmpty))).toList
+      base.map(pair => (pair._1, pair._2.count(_.getInterfaceErrors.isEmpty))).toList
     val appCountPerAnalysisCount: Map[Int, Int] =
       analysisCountPerApp.groupBy(_._2).map(tuple => (tuple._1, tuple._2.length))
     val appCountNoErrorPerAnalysisCount: Map[Int, Int] =

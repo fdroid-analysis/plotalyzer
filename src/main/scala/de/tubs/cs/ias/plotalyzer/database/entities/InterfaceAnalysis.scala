@@ -26,7 +26,8 @@ class InterfaceAnalysis(
   private var appPreferences: Option[List[AppPreferences]] = None
   private var trafficCollections: Option[List[TrafficCollection]] = None
   private var interfaceChain: Option[InterfaceInteractionChain] = None
-  private var errors: Option[List[InterfaceAnalysisError]] = None
+  private var interfaceErrors: Option[List[InterfaceAnalysisError]] = None
+  private var experimentErrors: Option[List[ExperimentError]] = None
 
   def dumpScreenshot(baseFolder: String): Unit = {
     val folder = new File(baseFolder + "/" + getDescription.replace(' ', '_'))
@@ -37,14 +38,16 @@ class InterfaceAnalysis(
 
   def getDescription: String = description
 
-  def getInterfaceChain: InterfaceInteractionChain = synchronized {
-    interfaceChain match {
-      case Some(value) => value
-      case None =>
-        interfaceChain = Some(InterfaceInteractionChain.get(this))
-        interfaceChain.get
+  def getInterfaceChain: InterfaceInteractionChain =
+    synchronized {
+      interfaceChain match {
+        case Some(value) =>
+          value
+        case None =>
+          interfaceChain = Some(InterfaceInteractionChain.get(this))
+          interfaceChain.get
+      }
     }
-  }
 
   def getApp: MobileApp = app
 
@@ -52,37 +55,58 @@ class InterfaceAnalysis(
 
   def getEnd: ZonedDateTime = end
 
-  def getSuccess: Boolean = success
+  def isSuccess: Boolean = success
 
-  def getAppPreferences: List[AppPreferences] = synchronized {
-    appPreferences match {
-      case Some(value) => value
-      case None =>
-        appPreferences = Some(AppPreferences.get(this))
-        appPreferences.get
+  def getAppPreferences: List[AppPreferences] =
+    synchronized {
+      appPreferences match {
+        case Some(value) =>
+          value
+        case None =>
+          appPreferences = Some(AppPreferences.get(this))
+          appPreferences.get
+      }
     }
-  }
 
-  def getTrafficCollection: List[TrafficCollection] = synchronized {
-    trafficCollections match {
-      case Some(value) => value
-      case None =>
-        trafficCollections =
-          Some(TrafficCollectionCache.getTrafficCollections(this.getExperimentId, this.getId))
-        trafficCollections.get
+  def getTrafficCollection: List[TrafficCollection] =
+    synchronized {
+      trafficCollections match {
+        case Some(value) =>
+          value
+        case None =>
+          trafficCollections = Some(
+            TrafficCollectionCache.getTrafficCollections(this.getExperimentId, this.getId)
+          )
+          trafficCollections.get
+      }
     }
-  }
 
   def getId: Int = id
 
   def getExperimentId: Int = experiment
 
-  def getErrors: List[InterfaceAnalysisError] = synchronized {
-    errors match {
-      case Some(value) => value
-      case None =>
-        errors = Some(InterfaceAnalysisError.getInterfaceAnalysisErrors(List(getId)))
-        errors.get
+  def getInterfaceErrors: List[InterfaceAnalysisError] =
+    synchronized {
+      interfaceErrors match {
+        case Some(value) =>
+          value
+        case None =>
+          interfaceErrors = Some(
+            InterfaceAnalysisError.getInterfaceAnalysisErrors(List(this.getId))
+          )
+          interfaceErrors.get
+      }
+    }
+
+  def getExperimentErrors: List[ExperimentError] = {
+    synchronized {
+      this.experimentErrors match {
+        case Some(errors) =>
+          errors
+        case None =>
+          this.experimentErrors = Some(ExperimentError.getExperimentErrors(this))
+          this.experimentErrors.get
+      }
     }
   }
 
@@ -109,18 +133,6 @@ object InterfaceAnalysis {
     }
   }
 
-  def apply(entity: WrappedResultSet)(implicit database: Database): InterfaceAnalysis = {
-    new InterfaceAnalysis(
-      entity.int("id"),
-      entity.int("experiment"),
-      MobileApp(entity),
-      entity.string("description"),
-      entity.zonedDateTime("start_time"),
-      entity.zonedDateTime("end_time"),
-      entity.boolean("success")
-    )
-  }
-
   def get(experiment: Experiment, app: String)(implicit
       database: Database
   ): List[InterfaceAnalysis] = {
@@ -139,6 +151,18 @@ object InterfaceAnalysis {
                     app_id = $app
            """.map(InterfaceAnalysis.apply).toList.apply()
     }
+  }
+
+  def apply(entity: WrappedResultSet)(implicit database: Database): InterfaceAnalysis = {
+    new InterfaceAnalysis(
+      entity.int("id"),
+      entity.int("experiment"),
+      MobileApp(entity),
+      entity.string("description"),
+      entity.zonedDateTime("start_time"),
+      entity.zonedDateTime("end_time"),
+      entity.boolean("success")
+    )
   }
 
 }

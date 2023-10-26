@@ -23,7 +23,7 @@ class RequestTrackingEndpointAnalysis(
   private val appMap: Map[MobileApp, List[InterfaceAnalysis]] =
     interfaceAnalysis
       .groupBy(_.getApp)
-      .filterNot(_._2.exists(_.getErrors.nonEmpty))
+      .filterNot(_._2.exists(_.getInterfaceErrors.nonEmpty))
       .filter(_._2.nonEmpty)
   private val overallSize: Int = appMap.size
   info(

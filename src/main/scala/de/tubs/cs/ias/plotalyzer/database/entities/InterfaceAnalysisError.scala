@@ -6,12 +6,12 @@ import scalikejdbc.{WrappedResultSet, scalikejdbcSQLInterpolationImplicitDef}
 import spray.json.{JsNull, JsNumber, JsObject, JsString, JsValue}
 
 class InterfaceAnalysisError(
-    id: Int,
-    analysis: Int,
-    interface: Option[Int],
-    message: String,
-    stacktrace: String
-) {
+  id: Int,
+  analysis: Int,
+  interface: Option[Int],
+  message: String,
+  stackTrace: String
+) extends AppAnalyzerError {
 
   def getAnalysisId: Int = analysis
 
@@ -26,9 +26,9 @@ class InterfaceAnalysisError(
         }),
       "message" -> JsString(getMessage),
       "cause" ->
-        (getStacktrace.getFirst("de.tubs".r) match {
+        (getStackTrace.getFirst("de.tubs".r) match {
           case Some(hit) => JsString(hit)
-          case None      => JsString(getStacktrace.trace)
+          case None      => JsString(getStackTrace.trace)
         })
     )
   }
@@ -39,8 +39,7 @@ class InterfaceAnalysisError(
 
   def getMessage: String = message
 
-  def getStacktrace: StackTrace = StackTrace(stacktrace)
-
+  def getStackTrace: StackTrace = StackTrace(stackTrace)
 }
 
 object InterfaceAnalysisError {
@@ -60,7 +59,7 @@ object InterfaceAnalysisError {
     }
   }
 
-  def getInterfaceAnalysisError(id: Int)(implicit database: Database): InterfaceAnalysisError = {
+  def getInterfaceAnalysisError(interfaceAnalysisId: Int)(implicit database: Database): InterfaceAnalysisError = {
     database.withDatabaseSession { implicit session =>
       sql"""SELECT id,
                      analysis,
@@ -68,9 +67,9 @@ object InterfaceAnalysisError {
                      message,
                      stacktrace
               FROM interfaceanalysiserror
-              WHERE id = $id
+              WHERE id = $interfaceAnalysisId
            """.map(InterfaceAnalysisError.apply).first.apply()
-        .getOrElse(throw new RuntimeException(s"there is no interface analysis error with id $id"))
+        .getOrElse(throw new RuntimeException(s"there is no interface analysis error with id $interfaceAnalysisId"))
     }
   }
 

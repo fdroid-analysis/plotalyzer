@@ -65,7 +65,7 @@ class AppConsentDialogAnalysis(interfaceAnalysis: List[InterfaceAnalysis],
   private var elementClassification
     : Option[ConsentDialogElementClassification] = None
   var didRejectCheck: Boolean = false
-  if (!interfaceAnalysis.map(_.getSuccess).reduce((lhs, rhs) => lhs && rhs)) {
+  if (!interfaceAnalysis.map(_.isSuccess).reduce((lhs, rhs) => lhs && rhs)) {
     addIssue(ConsentDialogAnalysisIssues.UNSUCCESSFUL_ANALYSIS)
   }
   assignAnalysis()
