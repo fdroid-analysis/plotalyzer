@@ -25,10 +25,20 @@ class AppRequestTrackingEndpointAnalysis(
     )
   private val endpointPii: MMap[String, ListBuffer[PII]] = MMap()
   private val requestPii: MMap[String, ListBuffer[PII]] = MMap()
-  private val errors: MMap[String, ListBuffer[PII]] = MMap()
+  /**
+   * Map of the structure: host -> List[PII that had an error during extraction]
+   */
+  private val hostsWithPiiError: MMap[String, ListBuffer[PII]] = MMap()
+  /**
+   * Map of the structure: PII Name -> (anonymous PII count, pseudonymous PII count)
+   * The PII Name is the Class name of the PII type.
+   */
   private val piiDistribution: MMap[String, (Int, Int)] = MMap()
   private val companyPiiDistribution: MMap[String, MMap[String, (Int, Int)]] = MMap()
   private val unaddressedEndpoints: MMap[String, MMap[String, Int]] = MMap()
+  /**
+   * Number of requests in which the endpoint parser found PII
+   */
   private var endpointParserCovered: Int = 0
 
   def getRequestCount: Int = requests.length
@@ -97,10 +107,13 @@ class AppRequestTrackingEndpointAnalysis(
     }
   }
 
+  /**
+   * Requests to an host listed in the config
+   */
   def getInterestingRequests: List[Request] = interestingRequests
 
   def getErrors: Map[String, List[PII]] =
-    errors.map(elem => elem._1 -> elem._2.toList).toMap
+    hostsWithPiiError.map(elem => elem._1 -> elem._2.toList).toMap
 
   def getPiiDistribution: Map[String, (Int, Int)] = piiDistribution.toMap
 
@@ -122,6 +135,9 @@ class AppRequestTrackingEndpointAnalysis(
     }
   }
 
+  /**
+   * Number of requests in which the endpoint parser found PII
+   */
   def getEndpointParserCovered: Int = endpointParserCovered
 
   def addUnaddressedEndpoint(request: Request): Unit = {
@@ -206,14 +222,17 @@ class AppRequestTrackingEndpointAnalysis(
   def getUnaddressedEndpoints: Map[String, Map[String, Int]] =
     unaddressedEndpoints.map(elem => elem._1 -> elem._2.toMap).toMap
 
+  /**
+   * Extract PII from requests with an endpoint parser available
+   */
   {
-    val (parsed, remaining) =
+    val (requestsWithPii, remainingRequests): (Map[Request, List[PII]], List[Request]) =
       Dispatcher.extractPIIByEndpoints(interestingRequests)
-    filterErrors(parsed).foreach { case (req, pii) =>
+    filterErrors(requestsWithPii).foreach { case (req, pii) =>
       addParsedPii(req, pii)
     }
-    endpointParserCovered = parsed.size
-    filterErrors(Dispatcher.extractPIIByGenericParser(remaining, conf))
+    endpointParserCovered = requestsWithPii.size
+    filterErrors(Dispatcher.extractPIIByGenericParser(remainingRequests, conf))
       .foreach { case (req, pii) =>
         addParsedPii(req, pii)
         addUnaddressedEndpoint(req)
@@ -221,16 +240,23 @@ class AppRequestTrackingEndpointAnalysis(
     determinePiiDistribution()
   }
 
+  /**
+   * Filters PII that had an error during extraction.
+   * Adds the PII with erroneous extraction to the 'errors' map
+   * @param requestsWithPii Requests and their associated PII
+   * @return Requests and their associated PII that did not have an error
+   */
   private def filterErrors(
-      result: Map[Request, List[PII]]
+    requestsWithPii: Map[Request, List[PII]]
   ): Map[Request, List[PII]] = {
-    result.map { case (request, piis) =>
-      errors.get(request.host) match {
-        case Some(value) => value.addAll(piis.filter(piiIsError))
+    requestsWithPii.map { case (request, pii) =>
+      hostsWithPiiError.get(request.host) match {
+        case Some(errorPii) =>
+          errorPii.addAll(pii.filter(piiIsError))
         case None =>
-          errors.addOne(request.host -> ListBuffer(piis.filter(piiIsError): _*))
+          hostsWithPiiError.addOne(request.host -> ListBuffer(pii.filter(piiIsError): _*))
       }
-      request -> piis.filterNot(piiIsError)
+      request -> pii.filterNot(piiIsError)
     }
   }
 
@@ -290,13 +316,13 @@ object AppRequestTrackingEndpointAnalysis {
     implicit class RequestTimeOrder(req: Request) extends Ordered[Request] {
 
       override def compare(that: Request): Int =
-        this.req.start.toEpochSecond.compare(that.start.toEpochSecond)
+        this.req.startTime.toEpochSecond.compare(that.startTime.toEpochSecond)
     }
 
     if (req.nonEmpty) {
       val first = req.min
       req.filter(req =>
-        req.start.toEpochSecond - first.start.toEpochSecond <= timespanSeconds
+                   req.startTime.toEpochSecond - first.startTime.toEpochSecond <= timespanSeconds
       )
     } else {
       List()

@@ -3,7 +3,12 @@ package de.tubs.cs.ias.plotalyzer.cli
 import com.github.vickumar1981.stringdistance.StringDistance._
 import de.halcony.argparse.{Parser, ParsingResult}
 import de.tubs.cs.ias.applist.{AppListParser, MobileAppList}
-import de.tubs.cs.ias.plotalyzer.database.entities.{AppAnalyzerError, Experiment, InterfaceAnalysis, MobileApp}
+import de.tubs.cs.ias.plotalyzer.database.entities.{
+  AppAnalyzerError,
+  Experiment,
+  InterfaceAnalysis,
+  MobileApp
+}
 import de.tubs.cs.ias.plotalyzer.utility.AsciiProgressBar
 import scala.collection.mutable.HashMap
 import spray.json.{JsArray, JsObject, JsString, JsValue}
@@ -33,7 +38,7 @@ object ExperimentCommand extends Command with LogSupport {
           "similarity",
           "s",
           "similar",
-          Some("0.8"),
+          Some("0.95"),
           "similarity between error messages to consider them the same, e.g. 0.5/0.8/0.99"
         )
         .addDefault[ParsingResult => JsValue]("func", this.showFailed)
@@ -103,7 +108,7 @@ object ExperimentCommand extends Command with LogSupport {
       similarity: Double
   ): Map[String, List[MobileApp]] = {
     val failGroups: HashMap[String, List[MobileApp]] = HashMap()
-    val bar = AsciiProgressBar.create("Comparing failure reasons", failed.size)
+    val bar = AsciiProgressBar.create("Comparing failure reasons", failed.size.toLong)
     try {
       for (app <- failed.keys) {
         for (analysis <- failed(app)) {
@@ -129,7 +134,7 @@ object ExperimentCommand extends Command with LogSupport {
       var mostSimilarFail: String = ""
       val analysisMessage = fail.getMessage.replace(app.id, "?")
       for (failMessage <- failGroups.keys) {
-        val similarity = JaroWinkler.score(failMessage, analysisMessage)
+        val similarity = JaroWinkler.score(failMessage.slice(0, 200), analysisMessage.slice(0, 200))
         if (similarity > highestSimilarity) {
           highestSimilarity = similarity
           mostSimilarFail = failMessage

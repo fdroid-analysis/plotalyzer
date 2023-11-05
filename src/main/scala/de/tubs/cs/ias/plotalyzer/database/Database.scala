@@ -3,7 +3,7 @@ package de.tubs.cs.ias.plotalyzer.database
 import de.halcony.argparse.ParsingResult
 import de.tubs.cs.ias.plotalyzer.database.Database.connectionPools
 import scala.collection.mutable.HashSet
-import scalikejdbc.{ConnectionPool, ConnectionPoolSettings, DB, DBSession, using}
+import scalikejdbc._
 
 class Database(val poolName: String) {
   def withDatabaseSession[T](func: DBSession => T): T = {
@@ -12,15 +12,13 @@ class Database(val poolName: String) {
         DB(con).localTx { session => func(session) }
       }
     } else {
-      throw new RuntimeException(
-        s"there is no '$poolName' postgres connection pool, initialize first"
-      )
+      throw new RuntimeException(s"there is no '$poolName' postgres connection pool, initialize first")
     }
   }
 }
 
 object Database {
-  private val POOL_NAME = "plotalyzer"
+  val POOL_NAME = "plotalyzer"
   private val connectionPools: HashSet[String] = new HashSet[String]
 
   implicit def default: Database = new Database(POOL_NAME)

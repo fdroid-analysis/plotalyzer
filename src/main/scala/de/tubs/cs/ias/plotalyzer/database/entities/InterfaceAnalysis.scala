@@ -68,7 +68,7 @@ class InterfaceAnalysis(
       }
     }
 
-  def getTrafficCollection: List[TrafficCollection] =
+  def getTrafficCollections: List[TrafficCollection] =
     synchronized {
       trafficCollections match {
         case Some(value) =>
@@ -116,23 +116,6 @@ class InterfaceAnalysis(
 
 object InterfaceAnalysis {
 
-  def get(experiment: Experiment)(implicit database: Database): List[InterfaceAnalysis] = {
-    database.withDatabaseSession { implicit session =>
-      sql"""SELECT id,
-                     experiment,
-                     app_id,
-                     app_version,
-                     app_os,
-                     description,
-                     start_time,
-                     end_time,
-                     success
-              FROM interfaceanalysis
-              WHERE experiment = ${experiment.getId}
-           """.map(InterfaceAnalysis.apply).toList.apply()
-    }
-  }
-
   def get(experiment: Experiment, app: String)(implicit
       database: Database
   ): List[InterfaceAnalysis] = {
@@ -163,6 +146,40 @@ object InterfaceAnalysis {
       entity.zonedDateTime("end_time"),
       entity.boolean("success")
     )
+  }
+
+  def getLatestSuccessfulAnalyses(experiment: Experiment): List[InterfaceAnalysis] = {
+    get(experiment)
+      .filter(_.isSuccess)
+      .groupBy(_.getApp)
+      .view
+      .mapValues(analyses =>
+        analyses.reduce((a1, a2) =>
+          if (a1.getStart.isAfter(a2.getStart))
+            a1
+          else
+            a2
+        )
+      )
+      .values
+      .toList
+  }
+
+  def get(experiment: Experiment)(implicit database: Database): List[InterfaceAnalysis] = {
+    database.withDatabaseSession { implicit session =>
+      sql"""SELECT id,
+                     experiment,
+                     app_id,
+                     app_version,
+                     app_os,
+                     description,
+                     start_time,
+                     end_time,
+                     success
+              FROM interfaceanalysis
+              WHERE experiment = ${experiment.getId}
+           """.map(InterfaceAnalysis.apply).toList.apply()
+    }
   }
 
 }

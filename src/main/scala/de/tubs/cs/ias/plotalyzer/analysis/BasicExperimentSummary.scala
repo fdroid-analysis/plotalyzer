@@ -29,7 +29,7 @@ class BasicExperimentSummary(interfaceAnalysis: List[InterfaceAnalysis]) {
 
   val (requests, requestNoError) = {
     val reqs: List[Request] =
-      interfaceAnalysis.flatMap(_.getTrafficCollection.flatMap(_.getRequests))
+      interfaceAnalysis.flatMap(_.getTrafficCollections.flatMap(_.getRequests))
     (reqs.length, reqs.count(_.error.isEmpty))
   }
 

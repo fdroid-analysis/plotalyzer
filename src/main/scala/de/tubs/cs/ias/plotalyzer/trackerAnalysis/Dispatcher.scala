@@ -4,10 +4,7 @@ import de.tubs.cs.ias.plotalyzer.analysis.trafficanalysis.TrafficCollectionAnaly
 import de.tubs.cs.ias.plotalyzer.database.entities.trafficcollection.Request
 import de.tubs.cs.ias.plotalyzer.trackerAnalysis.parser._
 import de.tubs.cs.ias.plotalyzer.trackerAnalysis.parser.adcolony._
-import de.tubs.cs.ias.plotalyzer.trackerAnalysis.parser.facebook.{
-  FacebookGraph,
-  FacebookGraphV
-}
+import de.tubs.cs.ias.plotalyzer.trackerAnalysis.parser.facebook.{FacebookGraph, FacebookGraphV}
 import de.tubs.cs.ias.plotalyzer.trackerAnalysis.parser.firebase._
 import de.tubs.cs.ias.plotalyzer.trackerAnalysis.parser.vungle._
 import de.tubs.cs.ias.plotalyzer.trackerAnalysis.parser.unity._
@@ -17,7 +14,7 @@ import scala.collection.mutable.{Map => MMap}
 
 object Dispatcher {
 
-  private val endpointParser: List[EndpointParser] = List(
+  private val endpointParsers: List[EndpointParser] = List(
     Experimental,
     Adjust,
     UnityState,
@@ -54,9 +51,11 @@ object Dispatcher {
   )
 
   def getEndpointCompany(request: Request): Option[String] = {
-    endpointParser.find(_.requestMatchesEndpoint(request)) match {
-      case Some(value) => Some(value.trackingCompany)
-      case None        => None
+    endpointParsers.find(_.requestMatchesEndpoint(request)) match {
+      case Some(value) =>
+        Some(value.trackingCompany)
+      case None =>
+        None
     }
   }
 
@@ -65,19 +64,18 @@ object Dispatcher {
     * @param requests the requests to be processed
     * @return the mapping of request to PII list as well as the list of remaining unaddressed requests
     */
-  def extractPIIByEndpoints(
-      requests: List[Request]): (Map[Request, List[PII]], List[Request]) = {
-    val remaining: ListBuffer[Request] = new ListBuffer()
-    val hits: MMap[Request, List[PII]] = MMap()
+  def extractPIIByEndpoints(requests: List[Request]): (Map[Request, List[PII]], List[Request]) = {
+    val remainingRequests: ListBuffer[Request] = new ListBuffer()
+    val requestsWithPii: MMap[Request, List[PII]] = MMap()
     requests.foreach { request =>
-      val ret = endpointParser.flatMap(_.parse(request))
-      if (ret.nonEmpty) {
-        hits.addOne(request -> ret)
+      val pii = endpointParsers.flatMap(_.parse(request))
+      if (pii.nonEmpty) {
+        requestsWithPii.addOne(request -> pii)
       } else {
-        remaining.addOne(request)
+        remainingRequests.addOne(request)
       }
     }
-    (hits.toMap, remaining.toList)
+    (requestsWithPii.toMap, remainingRequests.toList)
   }
 
   /** extracts contained PII based on the string indicators provided by the conf
@@ -88,11 +86,14 @@ object Dispatcher {
     */
   def extractPIIByGenericParser(
       request: List[Request],
-      conf: TrafficCollectionAnalysisConfig): Map[Request, List[PII]] = {
+      conf: TrafficCollectionAnalysisConfig
+  ): Map[Request, List[PII]] = {
     val parser = new GenericRequestParser(conf)
-    request.map { request =>
-      request -> parser.parse(request)
-    }.toMap
+    request
+      .map { request =>
+        request -> parser.parse(request)
+      }
+      .toMap
   }
 
 }

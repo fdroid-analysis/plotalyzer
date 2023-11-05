@@ -1,16 +1,13 @@
 package de.tubs.cs.ias.plotalyzer.analysis.tcfdetection
 
 import de.tubs.cs.ias.plotalyzer.database.Database
-import de.tubs.cs.ias.plotalyzer.database.entities.{
-  Experiment,
-  InterfaceAnalysis,
-  MobileApp
-}
+import de.tubs.cs.ias.plotalyzer.database.entities.{Experiment, InterfaceAnalysis, MobileApp}
+import scala.annotation.unused
 import spray.json.{JsObject, JsValue}
 import wvlet.log.LogSupport
 
 class DynamicTCFDetection(analysis: List[InterfaceAnalysis],
-                          conf: TCFDetectionConf)
+                          @unused conf: TCFDetectionConf)
     extends LogSupport {
 
   val appAnalysis: Map[MobileApp, AppDynamicTCFDetection] = analysis

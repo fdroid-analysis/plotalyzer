@@ -7,13 +7,13 @@ case class TimeSpanFilter(timeSpanSec: Long) extends TrafficFilter {
     implicit class RequestTimeOrder(req: Request) extends Ordered[Request] {
 
       override def compare(that: Request): Int =
-        this.req.start.toEpochSecond.compare(that.start.toEpochSecond)
+        this.req.startTime.toEpochSecond.compare(that.startTime.toEpochSecond)
     }
 
     if (requests.nonEmpty) {
       val first = requests.min
       requests.filter(req =>
-        req.start.toEpochSecond - first.start.toEpochSecond <= timeSpanSec)
+                        req.startTime.toEpochSecond - first.startTime.toEpochSecond <= timeSpanSec)
     } else {
       List[Request]()
     }

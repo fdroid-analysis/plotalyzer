@@ -19,8 +19,8 @@ libraryDependencies ++=
     "com.thesamet.scalapb" %% "compilerplugin" % "0.11.13",
     "org.json4s" %% "json4s-native" % "4.0.6",
     "de.tubs.cs.ias" %% "appdownloader" % "1.0.0-SNAPSHOT",
-    "com.github.vickumar1981" %% "stringdistance" % "1.2.7",
-    )
+    "com.github.vickumar1981" %% "stringdistance" % "1.2.7"
+  )
 
 ThisBuild / resolvers ++=
   Seq(

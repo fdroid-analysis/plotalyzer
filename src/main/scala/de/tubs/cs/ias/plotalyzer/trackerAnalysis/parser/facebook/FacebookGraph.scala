@@ -19,58 +19,67 @@ object FacebookGraph extends EndpointParser {
   override val trackingCompany: String = "Facebook"
 
   override protected def prepare(request: Request): Option[JsObject] = {
-    if ("https://graph.facebook.com/network_ads_common".r.matches(
-          request.getUrl)) {
+    if ("https://graph.facebook.com/network_ads_common".r.matches(request.getUrl)) {
       Option(request.content) match {
         case Some(_) =>
           val jsObject = parseQueryFromBody(request).get
-          val VALPARAMS = jsObject.fields.get("VALPARAMS") match {
-            case Some(value: JsString) =>
-              JsonParser(URLDecoder.decode(value.value)).asJsObject
-            case _ => JsObject()
-          }
-          val ANALOG = jsObject.fields.get("ANALOG") match {
-            case Some(value: JsString) =>
-              JsonParser(URLDecoder.decode(value.value)).asJsObject
-            case _ => JsObject()
-          }
+          val VALPARAMS =
+            jsObject.fields.get("VALPARAMS") match {
+              case Some(value: JsString) =>
+                JsonParser(URLDecoder.decode(value.value)).asJsObject
+              case _ =>
+                JsObject()
+            }
+          val ANALOG =
+            jsObject.fields.get("ANALOG") match {
+              case Some(value: JsString) =>
+                JsonParser(URLDecoder.decode(value.value)).asJsObject
+              case _ =>
+                JsObject()
+            }
           val ret = JsObject(
             DeepMerge
               .merge(jsObject, VALPARAMS, ANALOG)
               .fields
-              .filterNot(elem => Set("ANALOG", "VALPARAMS").contains(elem._1)))
+              .filterNot(elem => Set("ANALOG", "VALPARAMS").contains(elem._1))
+          )
           if (ret.fields.nonEmpty)
             Some(ret)
           else
             None
-        case None => None
+        case None =>
+          None
       }
     } else {
       Option(request.content) match {
         case Some(_) =>
           parseQueryFromBody(request) match {
             case Some(obj) =>
-              val payload = JsonParser(URLDecoder.decode(
-                obj.fields("payload").asInstanceOf[JsString].value)).asJsObject
+              val payload =
+                JsonParser(URLDecoder.decode(obj.fields("payload").asInstanceOf[JsString].value))
+                  .asJsObject
               payload.getOptionalField[JsObject]("request") match {
                 case Some(request) =>
-                  val VALPARAMS = request.fields.get("VALPARAMS") match {
-                    case Some(value: JsString) =>
-                      JsonParser(URLDecoder.decode(value.value)).asJsObject
-                    case _ => JsObject()
-                  }
+                  val VALPARAMS =
+                    request.fields.get("VALPARAMS") match {
+                      case Some(value: JsString) =>
+                        JsonParser(URLDecoder.decode(value.value)).asJsObject
+                      case _ =>
+                        JsObject()
+                    }
                   val ret = JsObject(
-                    DeepMerge
-                      .merge(request, VALPARAMS)
-                      .fields
-                      .filterNot(_._1 == "VALPARAMS"))
+                    DeepMerge.merge(request, VALPARAMS).fields.filterNot(_._1 == "VALPARAMS")
+                  )
                   Some(ret)
-                case None => None
+                case None =>
+                  None
               }
 
-            case None => None
+            case None =>
+              None
           }
-        case None => None
+        case None =>
+          None
       }
     }
   }
@@ -80,8 +89,7 @@ object FacebookGraph extends EndpointParser {
   }
 
   addExtractor("battery") {
-    _.withOptionalFieldValue("battery")(value =>
-      BatteryPercentage(value, PLAIN))
+    _.withOptionalFieldValue("battery")(value => BatteryPercentage(value, PLAIN))
   }
 
   addExtractor("availableMemory") {
@@ -93,23 +101,19 @@ object FacebookGraph extends EndpointParser {
   }
 
   addExtractor("accelerometer_x") {
-    _.withOptionalFieldValue("accelerometer_x")(value =>
-      AccelerometerX(value, PLAIN))
+    _.withOptionalFieldValue("accelerometer_x")(value => AccelerometerX(value, PLAIN))
   }
 
   addExtractor("accelerometer_y") {
-    _.withOptionalFieldValue("accelerometer_y")(value =>
-      AccelerometerY(value, PLAIN))
+    _.withOptionalFieldValue("accelerometer_y")(value => AccelerometerY(value, PLAIN))
   }
 
   addExtractor("accelerometer_z") {
-    _.withOptionalFieldValue("accelerometer_z")(value =>
-      AccelerometerZ(value, PLAIN))
+    _.withOptionalFieldValue("accelerometer_z")(value => AccelerometerZ(value, PLAIN))
   }
 
   addExtractor("IDFA") {
-    _.withOptionalFieldValue("IDFA")(value =>
-      GlobalOSAdvertisingIdentifier(value, PLAIN))
+    _.withOptionalFieldValue("IDFA")(value => GlobalOSAdvertisingIdentifier(value, PLAIN))
   }
 
   addExtractor("SDK_VERSION") {

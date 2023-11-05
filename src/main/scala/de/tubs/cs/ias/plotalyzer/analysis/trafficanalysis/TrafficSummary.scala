@@ -40,7 +40,7 @@ class TrafficSummary(analysis: List[InterfaceAnalysis],
   private val requests: List[BasicRequest] =
     analysis
       .map(
-        _.getTrafficCollection.flatMap(_.getRequests.filter(_.error.isEmpty)))
+        _.getTrafficCollections.flatMap(_.getRequests.filter(_.error.isEmpty)))
       .flatMap { requestSets =>
         filter.flatMap(filter => filter.filter(requestSets))
       }

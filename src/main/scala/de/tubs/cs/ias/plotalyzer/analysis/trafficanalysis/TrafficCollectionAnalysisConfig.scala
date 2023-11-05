@@ -31,7 +31,7 @@ case class Regular(
   ): (String, Option[AppRequestTrackingEndpointAnalysis]) = {
     analysis.find(_.getDescription == descr) match {
       case Some(analysis) =>
-        val allRequests = analysis.getTrafficCollection.flatMap(_.getRequests)
+        val allRequests = analysis.getTrafficCollections.flatMap(_.getRequests)
         val traffic = AppRequestTrackingEndpointAnalysis.maxTimespan(
           allRequests,
           conf.timespanSec
@@ -61,7 +61,7 @@ case class Minus(
     (minuendAna, subtrAna) match {
       case (Some(minuendV), Some(subtrahendV)) =>
         val minuendTraffic =
-          minuendV.getTrafficCollection.flatMap(_.getRequests)
+          minuendV.getTrafficCollections.flatMap(_.getRequests)
         val minuendTrafficFilteredByTime = AppRequestTrackingEndpointAnalysis
           .maxTimespan(minuendTraffic, conf.timespanSec)
         val minuendAnalysis = new AppRequestTrackingEndpointAnalysis(
@@ -70,7 +70,7 @@ case class Minus(
         )
         val reqs = minuendAnalysis.getRequestCount
         val subtrahendTraffic =
-          subtrahendV.getTrafficCollection.flatMap(_.getRequests)
+          subtrahendV.getTrafficCollections.flatMap(_.getRequests)
         val subtrahendTrafficFilteredByTime = AppRequestTrackingEndpointAnalysis
           .maxTimespan(subtrahendTraffic, conf.timespanSec)
         val subtrahendAnalysis = new AppRequestTrackingEndpointAnalysis(

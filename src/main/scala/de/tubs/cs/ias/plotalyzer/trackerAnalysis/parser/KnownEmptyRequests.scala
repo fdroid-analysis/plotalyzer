@@ -10,7 +10,6 @@ import scala.util.matching.Regex
 /** This endpoint parser handles all the URLs we already analyzed in one of the specialized parser or know
   *  to not contain usable data. This ensures that we know how many (tracking) requests we can process/handle using
   *  our endpoint specific handler and also allows to focus on the remaining enpoints.
-  *
   */
 object KnownEmptyRequests extends EndpointParser {
   override val endpointURLs: List[Regex] = List(
@@ -18,7 +17,7 @@ object KnownEmptyRequests extends EndpointParser {
     "https: //config.uca.cloud.unity3d.com/.*json".r,
     "https://mediation-tracking.prd.mz.internal.unity3d.com/api/v1/.*".r,
     "https://mediation-tracking.unityads.unity3d.com/api/.*".r,
-    "https://api.onesignal.com/apps/.*".r, // there could be a uuid but she is related to app not to user
+    "https://api.onesignal.com/apps/.*".r, // there could be a uuid but it is related to app not to user
     "https://googleads.g.doubleclick.net/favicon.ico".r,
     "https://googleads.g.doubleclick.net/pagead/.*".r,
     "https://googleads.g.doubleclick.net/mads/.*".r,
@@ -39,10 +38,7 @@ object KnownEmptyRequests extends EndpointParser {
   override val trackingCompany: String = "Misc"
 
   override protected def prepare(request: Request): Option[JsObject] = {
-    Some(
-      JsObject(
-        "url" -> JsString(request.host)
-      ))
+    Some(JsObject("url" -> JsString(request.host)))
   }
 
   addExtractor("empty") {
