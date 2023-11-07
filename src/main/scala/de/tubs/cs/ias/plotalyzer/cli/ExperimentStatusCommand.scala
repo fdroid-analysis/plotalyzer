@@ -14,13 +14,13 @@ import scala.collection.mutable.HashMap
 import spray.json.{JsArray, JsObject, JsString, JsValue}
 import wvlet.log.LogSupport
 
-object ExperimentCommand extends Command with LogSupport {
+object ExperimentStatusCommand extends Command with LogSupport {
 
-  val parser: Parser = Parser("experiment", "manage experiments")
+  val parser: Parser = Parser("status", "show the experiment status")
     .addPositional("app-list", "mobile app list of all apps to be analyzed in the experiment")
     .addFlag("listAll", "l", "list", "list app ids")
     .addSubparser(
-      Parser("status", "number of apps which are done, outstanding or failed")
+      Parser("all", "number of apps which are done, outstanding or failed")
         .addDefault[ParsingResult => JsValue]("func", this.showStatus)
     )
     .addSubparser(

@@ -2,7 +2,7 @@ package de.tubs.cs.ias.plotalyzer.json
 
 import spray.json.{DefaultJsonProtocol, RootJsonFormat}
 
-object JSONReader extends DefaultJsonProtocol {
+object JSONProtocol extends DefaultJsonProtocol {
 
   implicit val appEntryFormat: RootJsonFormat[AppEntry] = jsonFormat5(AppEntry)
 

@@ -22,6 +22,10 @@ class Experiment(id: Int, description: String, created: ZonedDateTime)(
         .apply()
     }
   }
+
+  def getLatestSuccessfulInterfaceAnalyses: List[InterfaceAnalysis] = {
+    InterfaceAnalysis.getLatestSuccessfulAnalyses(this)
+  }
 }
 
 object Experiment {

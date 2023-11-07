@@ -21,10 +21,12 @@ case class PrivacyLabelConsistencyResult[PL <: PrivacyLabel](
     .filter(_.isMatch)
   private val inconsistentRequestIds: List[Int] =
     allRequestMatches
-      .map(rm => rm.requestId -> privacyLabel.isConsistent(rm))
+      .map(rm => rm -> privacyLabel.isConsistent(rm))
       .toMap
       .filter(_._2 == false)
       .keys
+      .map(_.requestId)
+      .toSet
       .toList
   def getInconsistentRequestIds: List[Int] = inconsistentRequestIds
 
@@ -40,7 +42,8 @@ case class PrivacyLabelConsistencyResult[PL <: PrivacyLabel](
             .filter(rm => rm.requestId == requestId)
             .map(_.listId)
           val filterLists = allFilterLists.filter(list => requestMatchIds.contains(list.id))
-          requestId -> filterLists
+          val inconsistentFilterLists = filterLists.filterNot(fl => privacyLabel.isConsistent(fl))
+          requestId -> inconsistentFilterLists
         }
         .toMap
 
@@ -66,9 +69,11 @@ case class PrivacyLabelConsistencyResult[PL <: PrivacyLabel](
         .toVector
 
     val recommendedAntiFeatures = inconsistentRequestFilterLists
+      .view
+      .mapValues(lists => lists.map(_.id).map(FDroidPrivacyLabel.listIdToLabel))
+      .mapValues(_.flatten)
       .values
       .flatten
-      .flatMap(list => FDroidPrivacyLabel.listIdToLabel(list.id))
       .toSet
       .map[JsString](antiFeature => JsString(antiFeature))
       .toVector

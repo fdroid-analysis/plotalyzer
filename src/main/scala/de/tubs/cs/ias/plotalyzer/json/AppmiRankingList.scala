@@ -1,6 +1,6 @@
 package de.tubs.cs.ias.plotalyzer.json
 
-import de.tubs.cs.ias.plotalyzer.json.JSONReader.{
+import de.tubs.cs.ias.plotalyzer.json.JSONProtocol.{
   appmiRankingListFormat,
   binaryAppEntryFormat
 }
