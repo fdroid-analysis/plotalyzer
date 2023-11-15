@@ -174,7 +174,11 @@ object TrafficCommand extends Command {
 
     val toUrlReqs =
       (reqs: List[Request]) =>
-        reqs.map(req => req -> req.getUrl).groupBy(_._2).view.mapValues(_.map(_._1)).toMap
+        reqs.map(req => req -> req.getUrl)
+            .groupBy(_._2)
+            .view
+            .mapValues(_.map(_._1))
+            .toMap
     val thisUrlReqs = toUrlReqs(thisRequests)
     val thatUrlReqs = toUrlReqs(thatRequests)
     val intersection = thisUrlReqs.keySet.intersect(thatUrlReqs.keySet)
@@ -183,8 +187,8 @@ object TrafficCommand extends Command {
     val jaccardIndex = intersection.size.toDouble / (thisOnly.size + intersection.size + thatOnly.size)
 
     val urlToReqs: String => RequestEquivalence = (url: String) => {
-      val requests = thisUrlReqs(url) ++ thatUrlReqs(url)
-      RequestEquivalence(requests.head.getUrl, requests.map(_.id))
+      val requests = thisUrlReqs.getOrElse(url, List.empty) ++ thatUrlReqs.getOrElse(url, List.empty)
+      RequestEquivalence(url, requests.map(_.id))
     }
     AppRequestComparison(
       thisAnalysis.getApp.id,

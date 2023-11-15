@@ -44,6 +44,7 @@ object Plotalyzer extends LogSupport {
             .addDefault[ParsingResult => JsValue]("func", generateConsentDialogAnalysisSpotcheckMain)))
     .addSubparser(ExperimentStatusCommand.parser)
     .addSubparser(PrivacyLabelCommand.parser)
+    .addSubparser(StaticAnalysisCommand.parser)
 
   def main(args: Array[String]): Unit = {
     try {
