@@ -28,12 +28,25 @@ object AppTracker extends SQLSyntaxSupport[AppTracker] {
     )
   }
 
+  def getByExperiment(experimentId: Int)(implicit db: Database): List[AppTracker] = {
+    db.withDatabaseSession { implicit session =>
+      val at = AppTracker.syntax("at")
+      withSQL {
+        select(at.*).from(AppTracker as at).where.eq(at.experimentId, experimentId)
+      }.map(AppTracker.apply).list.apply()
+    }
+  }
+
   def insert(appTracker: AppTracker)(implicit db: Database): Boolean = {
     val count = synchronized {
       db.withDatabaseSession { implicit session =>
         applyUpdate {
-          insertInto(AppTracker)
-            .values(appTracker.appId, appTracker.versionCode, appTracker.trackerId, appTracker.experimentId)
+          insertInto(AppTracker).values(
+            appTracker.appId,
+            appTracker.versionCode,
+            appTracker.trackerId,
+            appTracker.experimentId
+          )
         }
       }
     }

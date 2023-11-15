@@ -19,16 +19,13 @@ object AppLibrary extends SQLSyntaxSupport[AppLibrary] {
     }
   }
 
-  def insert(appLibrary: AppLibrary)(implicit db: Database): Boolean = {
-    val count = synchronized {
-      db.withDatabaseSession { implicit session =>
-        applyUpdate {
-          insertInto(AppLibrary)
-            .values(appLibrary.appId, appLibrary.versionCode, appLibrary.libraryName, appLibrary.experimentId)
-        }
-      }
+  def getByExperiment(experimentId: Int)(implicit db: Database): List[AppLibrary] = {
+    db.withDatabaseSession { implicit session =>
+      val al = AppLibrary.syntax("al")
+      withSQL {
+        select(al.*).from(AppLibrary as al).where.eq(al.experimentId, experimentId)
+      }.map(AppLibrary.apply).list.apply()
     }
-    count == 1
   }
 
   def apply(resultSet: WrappedResultSet): AppLibrary = {
@@ -38,6 +35,22 @@ object AppLibrary extends SQLSyntaxSupport[AppLibrary] {
       resultSet.string("library"),
       resultSet.int("experiment_id")
     )
+  }
+
+  def insert(appLibrary: AppLibrary)(implicit db: Database): Boolean = {
+    val count = synchronized {
+      db.withDatabaseSession { implicit session =>
+        applyUpdate {
+          insertInto(AppLibrary).values(
+            appLibrary.appId,
+            appLibrary.versionCode,
+            appLibrary.libraryName,
+            appLibrary.experimentId
+          )
+        }
+      }
+    }
+    count == 1
   }
 
 }
