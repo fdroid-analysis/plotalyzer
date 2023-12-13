@@ -9,8 +9,7 @@ import java.awt.image.BufferedImage
 import java.io.File
 import javax.imageio.ImageIO
 
-class Interface(id: Int, analysis: Int, comment: String)(
-    implicit database: Database)
+class Interface(id: Int, analysis: Int, comment: String)
     extends LogSupport {
 
   def getId: Int = id
@@ -46,7 +45,7 @@ class Interface(id: Int, analysis: Int, comment: String)(
 
   def elementCount: Int = getInterfaceElements.length
 
-  def getScreenshot: Option[BufferedImage] = {
+  def getScreenshot(implicit database: Database): Option[BufferedImage] = {
     database.withDatabaseSession { implicit session =>
       sql"""SELECT screenshot FROM interface WHERE id = $id AND screenshot IS NOT NULL"""
         .map { entity =>
@@ -57,7 +56,7 @@ class Interface(id: Int, analysis: Int, comment: String)(
     }
   }
 
-  def hasScreenshot: Boolean = {
+  def hasScreenshot(implicit database: Database): Boolean = {
     database.withDatabaseSession { implicit session =>
       sql"""SELECT TRUE AS succ FROM interface WHERE id = $id AND screenshot IS NOT NULL"""
         .map(_.boolean("succ"))
@@ -75,8 +74,7 @@ class Interface(id: Int, analysis: Int, comment: String)(
 
 object Interface {
 
-  def apply(entity: WrappedResultSet)(
-      implicit database: Database): Interface = {
+  def apply(entity: WrappedResultSet): Interface = {
     new Interface(
       entity.int("id"),
       entity.int("analysis"),
@@ -84,12 +82,9 @@ object Interface {
     )
   }
 
-  def getAll(analysis: InterfaceAnalysis)(
-      implicit database: Database): List[Interface] = {
+  def getAll(analysis: InterfaceAnalysis)(implicit database: Database): List[Interface] = {
     database.withDatabaseSession { implicit session =>
-      sql"""SELECT id,
-                     analysis,
-                     comment
+      sql"""SELECT id, analysis, comment
               FROM interface
               WHERE analysis = ${analysis.getId}
            """.map(Interface.apply).toList.apply()
@@ -99,9 +94,7 @@ object Interface {
   def getStart(analysis: InterfaceAnalysis)(
       implicit database: Database): Interface = {
     database.withDatabaseSession { implicit session =>
-      sql""" SELECT id,
-                      analysis,
-                      comment
+      sql""" SELECT id, analysis, comment
                FROM interface
                WHERE id = (SELECT min(id)
                            FROM interface
@@ -117,9 +110,7 @@ object Interface {
 
   def getById(id: Int)(implicit database: Database): Interface = {
     database.withDatabaseSession { implicit session =>
-      sql""" SELECT id,
-                      analysis,
-                      comment
+      sql""" SELECT id, analysis, comment
                FROM interface
                WHERE id = $id
            """

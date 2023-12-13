@@ -1,6 +1,6 @@
 package de.tubs.cs.ias.plotalyzer.analysis.privacylabel
 
-import de.tubs.cs.ias.plotalyzer.database.entities.{Experiment, InterfaceAnalysis}
+import de.tubs.cs.ias.plotalyzer.database.entities.Experiment
 import de.tubs.cs.ias.util.{FileSystemInteraction => fsi}
 import spray.json.{JsArray, JsNumber, JsObject, JsValue}
 import wvlet.log.LogSupport
@@ -24,7 +24,7 @@ object PrivacyLabelAnalysis extends LogSupport {
       e.g. app contacts url on easylist(_noelemhide), is also tagged with AntiFeature Ads*/
     // eval function: (List[RequestMatch], PrivacyLabel) --> PrivacyLabelConsistencyResult
     val experiment = Experiment.apply(experimentId.toString)
-    val successfulAnalyses = InterfaceAnalysis.getLatestSuccessfulAnalyses(experiment)
+    val successfulAnalyses = experiment.getLatestSuccessfulAppInterfaceAnalysesWithTraffic
     val appToAnalysis = successfulAnalyses.map(analysis => analysis.getApp.id -> analysis).toMap
     val files = fsi.getFiles(labelFolder, Some(labelSuffix))
     val appToLabelFile = successfulAnalyses.map(_.getApp.id)

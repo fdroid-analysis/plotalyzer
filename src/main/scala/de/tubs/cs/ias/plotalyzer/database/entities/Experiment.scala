@@ -23,8 +23,11 @@ class Experiment(id: Int, description: String, created: ZonedDateTime)(
     }
   }
 
-  def getLatestSuccessfulInterfaceAnalyses: List[InterfaceAnalysis] = {
-    InterfaceAnalysis.getLatestSuccessfulAnalyses(this)
+  def getLatestSuccessfulAppInterfaceAnalysesWithTraffic: List[InterfaceAnalysis] = {
+    InterfaceAnalysis.getLatestAnalysesWithCondition(
+      this,
+      ia => ia.isSuccess && ia.getDescription == "Simple Traffic Collection"
+    )
   }
 }
 

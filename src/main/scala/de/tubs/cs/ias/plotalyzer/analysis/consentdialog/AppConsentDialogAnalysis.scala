@@ -79,7 +79,7 @@ class AppConsentDialogAnalysis(interfaceAnalysis: List[InterfaceAnalysis],
         conf.keywordsConf,
         conf.lengthFactor
       ))
-    print(elementClassification)
+    // print(elementClassification) // lead to timeout during analysis
     identifyDialogType()
     // basic sanity check
     checkAnalysisForIssue(

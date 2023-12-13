@@ -2,22 +2,16 @@ package de.tubs.cs.ias.plotalyzer.cli
 import com.github.vickumar1981.stringdistance.StringDistance._
 import de.halcony.argparse.{OptionalValue, Parser, ParsingResult}
 import de.tubs.cs.ias.plotalyzer.Plotalyzer.getOnlyApps
-import de.tubs.cs.ias.plotalyzer.analysis.trafficanalysis.{
-  RequestTrackingEndpointAnalysis,
-  TrafficCollectionAnalysisConfig,
-  TrafficSummary
-}
-import de.tubs.cs.ias.plotalyzer.analysis.trafficanalysis.filter.HostPathFilterTypes.{
-  EXODUS,
-  GENERIC
-}
+import de.tubs.cs.ias.plotalyzer.analysis.trafficanalysis.filter.HostPathFilterTypes.{EXODUS, GENERIC}
 import de.tubs.cs.ias.plotalyzer.analysis.trafficanalysis.filter.TrafficFilter
+import de.tubs.cs.ias.plotalyzer.analysis.trafficanalysis.{RequestTrackingEndpointAnalysis, TrafficCollectionAnalysisConfig, TrafficSummary}
 import de.tubs.cs.ias.plotalyzer.database.entities.adblock.RequestRecipient
 import de.tubs.cs.ias.plotalyzer.database.entities.trafficcollection.{Request, TrafficCollection}
 import de.tubs.cs.ias.plotalyzer.database.entities.{Experiment, InterfaceAnalysis}
 import de.tubs.cs.ias.plotalyzer.json.AppRequestComparisonJsonProtocol.AppRequestComparisonJsonFormat
 import de.tubs.cs.ias.plotalyzer.json.{AppRequestComparison, RequestEquivalence}
 import de.tubs.cs.ias.plotalyzer.utility.{AsciiProgressBar, Time}
+import scala.collection.immutable.SortedMap
 import spray.json.{JsArray, JsNumber, JsObject, JsString, JsValue, enrichAny}
 
 object TrafficCommand extends Command {
@@ -50,14 +44,22 @@ object TrafficCommand extends Command {
     )
     .addSubparser(
       Parser("analyzeCollection", "analyze the collected traffic")
-        .addOptional(
-          "trafficConfig",
-          "c",
-          "config",
-          Some("./resources/trafficCollection/config.json")
+        .addSubparser(
+          Parser("parseEndpoints", "use endpoint parsers to extract PII from traffic")
+            .addOptional(
+              "trafficConfig",
+              "c",
+              "config",
+              Some("./resources/trafficCollection/config.json")
+            )
+            .addOptional("only", "o", "only", None, "only analyze the provided apps")
+            .addDefault[ParsingResult => JsValue]("func", generateTrafficCollectionAnalysisMain)
         )
-        .addOptional("only", "o", "only", None, "only analyze the provided apps")
-        .addDefault[ParsingResult => JsValue]("func", generateTrafficCollectionAnalysisMain)
+        .addSubparser(
+          Parser("llm", "use LLM to try to extract PII from traffic")
+            .addOptional("llmConfig", "c", "config", Some("./resources/trafficCollection/llm.conf"))
+            .addDefault[ParsingResult => JsValue]("func", generateTrafficCollectionAnalysisLlmMain)
+        )
     )
     .addSubparser(
       Parser("compareAppRequests", "compare requests between experiments for apps that are in both")
@@ -71,8 +73,9 @@ object TrafficCommand extends Command {
       ).addOptional(
           "similarity",
           "s",
-          description = "similarity between host and app_id to consider them associated (default: 0.8)",
-          default = Some("0.8"),
+          description =
+            "similarity between host and app_id to consider them associated (default: 0.8)",
+          default = Some("0.8")
         )
         .addDefault[ParsingResult => JsValue]("func", this.estimateRecipientType)
     )
@@ -133,45 +136,78 @@ object TrafficCommand extends Command {
   private def compareAppRequests(pargs: ParsingResult): JsValue = {
     val thisExpId = pargs.getValue[String]("id").toInt
     val thatExpId = pargs.getValue[String]("otherExperiment").toInt
-    // get latest successful analysis per app for each exp
-    // map appId to requests
-    // for app in this: get app in that
-    // diff requests
-    // insert into results object
-    // differentiate results between: requests -same, -different
-    // when different requests: lists req in both, req only in this, req only in that
-    // request is different, when contacting different scheme, host and path up until query params
-    val thisAnalyses = Experiment(thisExpId.toString).getLatestSuccessfulInterfaceAnalyses
-    val thatAnalyses = Experiment(thatExpId.toString).getLatestSuccessfulInterfaceAnalyses
-    val bar = AsciiProgressBar.create("Comparing app requests", thisAnalyses.size.toLong)
-    val comparisons = thisAnalyses
-      .map { thisAnalysis =>
-        val appId = thisAnalysis.getApp.id
-        val thatAnalysis = thatAnalyses.find(analysis => appId == analysis.getApp.id)
-        bar.step()
-        thatAnalysis match {
-          case Some(thatAnalysis) =>
-            Some(compareRequests(thisAnalysis, thatAnalysis))
-          case None =>
-            None
-        }
-      }
-      .filter(_.nonEmpty)
-      .map(_.get)
-    bar.close()
+    val thisAnalyses =
+      Experiment(thisExpId.toString).getLatestSuccessfulAppInterfaceAnalysesWithTraffic
+    val thatAnalyses =
+      Experiment(thatExpId.toString).getLatestSuccessfulAppInterfaceAnalysesWithTraffic
+    val comparisons = compareExperiments(thisAnalyses, thatAnalyses)
     val same = comparisons.filter(_.jaccardIndex >= 1.0d)
-    val different = comparisons.filter(_.jaccardIndex < 1.0d).sortBy(1 - _.jaccardIndex)
+    val different = comparisons.filter(_.jaccardIndex < 1.0d).sortBy(_.jaccardIndex).reverse
+
     JsObject(
       "thisExperimentId" -> JsNumber(thisExpId),
       "thatExperimentId" -> JsNumber(thatExpId),
       "same" ->
-        JsObject("count" -> JsNumber(same.size), "apps" -> JsArray(same.map(_.toJson).toVector)),
+        JsObject(
+          "count" -> JsNumber(same.size),
+          "apps" -> JsArray(same.map(_.toJson).toVector),
+          "requestFilterMatchCount" -> JsObject(
+            "both" -> groupByTrackingCount(same, _.requestsBothTrackingCount),
+            "thisOnly" -> JsNumber(0),
+            "thatOnly" -> JsNumber(0)
+          )
+       ),
       "different" ->
         JsObject(
           "count" -> JsNumber(different.size),
+          "requestFilterMatchCount" -> JsObject(
+            "both" ->  groupByTrackingCount(different, _.requestsBothTrackingCount),
+            "thisOnly" ->  groupByTrackingCount(different, _.requestsThisOnlyTrackingCount),
+            "thatOnly" ->  groupByTrackingCount(different, _.requestsThatOnlyTrackingCount)
+          ),
           "apps" -> JsArray(different.map(_.toJson).toVector)
         )
     )
+  }
+
+  private def groupByTrackingCount(
+    appComparisons: Seq[AppRequestComparison],
+    fieldSelector: AppRequestComparison => Int
+  ): JsObject  = {
+    val groupByTrackingCount = appComparisons
+      .groupBy(fieldSelector)
+      .map(trackingCount_Apps => trackingCount_Apps._1 -> JsNumber(trackingCount_Apps._2.size))
+    val sorted = SortedMap.from(groupByTrackingCount)
+    val sortedJson = sorted.map(entry => entry._1.toString -> entry._2)
+    JsObject(sortedJson)
+  }
+
+  private def compareExperiments(
+      thisAnalyses: Seq[InterfaceAnalysis],
+      thatAnalyses: Seq[InterfaceAnalysis]
+  ): Seq[AppRequestComparison] = {
+    val bar = AsciiProgressBar.create("Comparing app requests", thisAnalyses.size.toLong)
+    try {
+      thisAnalyses
+        .map { thisAnalysis =>
+          try {
+            val appId = thisAnalysis.getApp.id
+            val thatAnalysis = thatAnalyses.find(analysis => appId == analysis.getApp.id)
+            thatAnalysis match {
+              case Some(thatAnalysis) =>
+                Some(compareRequests(thisAnalysis, thatAnalysis))
+              case None =>
+                None
+            }
+          } finally {
+            bar.step()
+          }
+        }
+        .filter(_.nonEmpty)
+        .map(_.get)
+    } finally {
+      bar.close()
+    }
   }
 
   private def compareRequests(
@@ -181,7 +217,11 @@ object TrafficCommand extends Command {
     assert(thisAnalysis.getApp.id == thatAnalysis.getApp.id)
     val simpleCollection =
       (analysis: InterfaceAnalysis) =>
-        analysis.getTrafficCollections.filter(_.getComment == "Simple Traffic Collection")
+        analysis
+          .getTrafficCollections
+          .filter(_.getComment == "Simple Traffic Collection")
+          .sortBy(_.getStart)
+          .reverse
     val collectionToRequests =
       (collection: TrafficCollection) => collection.getRequests.filter(_.error.isEmpty)
     val thisCollections = simpleCollection(thisAnalysis)
@@ -200,8 +240,6 @@ object TrafficCommand extends Command {
     val intersection = thisUrlReqs.keySet.intersect(thatUrlReqs.keySet)
     val thisOnly = thisUrlReqs.keySet.removedAll(intersection)
     val thatOnly = thatUrlReqs.keySet.removedAll(intersection)
-    val jaccardIndex =
-      intersection.size.toDouble / (thisOnly.size + intersection.size + thatOnly.size)
 
     val urlToReqs: String => RequestEquivalence =
       (url: String) => {
@@ -209,14 +247,13 @@ object TrafficCommand extends Command {
           thisUrlReqs.getOrElse(url, List.empty) ++ thatUrlReqs.getOrElse(url, List.empty)
         RequestEquivalence(url, requests.map(_.id))
       }
-    AppRequestComparison(
+    new AppRequestComparison(
       thisAnalysis.getApp.id,
       thisCollection.getId,
       thatCollection.getId,
       intersection.map(urlToReqs).toList,
       thisOnly.map(urlToReqs).toList,
-      thatOnly.map(urlToReqs).toList,
-      jaccardIndex
+      thatOnly.map(urlToReqs).toList
     )
   }
 
@@ -225,7 +262,7 @@ object TrafficCommand extends Command {
     val similarity = pargs.getValue[String]("similarity").toFloat
     val experiment = Experiment.apply(experimentId.toString)
     val recipientsRequestIds = RequestRecipient.getAll.map(_.requestId)
-    val analysis = experiment.getLatestSuccessfulInterfaceAnalyses
+    val analysis = experiment.getLatestSuccessfulAppInterfaceAnalysesWithTraffic
     analysis.foreach { analysis =>
       val appId = analysis.getApp.id.split('.').drop(1).mkString(".")
       val requests = analysis.getTrafficCollections.flatMap(_.getRequests).filter(_.error.isEmpty)
@@ -247,5 +284,10 @@ object TrafficCommand extends Command {
     val reverseSplit = split.reverse.drop(1)
     val reverseHost = reverseSplit.mkString(".")
     reverseHost
+  }
+
+  private def generateTrafficCollectionAnalysisLlmMain(pargs: ParsingResult): JsValue = {
+    val experimentId = pargs.getValue[String]("id")
+    JsObject("ey" -> JsString("yoyo"))
   }
 }

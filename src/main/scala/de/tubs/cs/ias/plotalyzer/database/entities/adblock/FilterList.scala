@@ -16,10 +16,6 @@ object FilterList {
     }
   }
 
-  def apply(resultSet: WrappedResultSet): FilterList = {
-    FilterList(resultSet.int("id"), resultSet.string("name"))
-  }
-
   def getName(id: Int)(implicit db: Database): Option[String] = {
     val filterList = db.withDatabaseSession { implicit session =>
       sql"SELECT * FROM pluginadblock.filterlist WHERE id = $id"
@@ -40,4 +36,18 @@ object FilterList {
       sql"SELECT * FROM pluginadblock.filterlist".map(FilterList.apply).toList.apply()
     }
   }
+
+  def apply(resultSet: WrappedResultSet): FilterList = {
+    FilterList(resultSet.int("id"), resultSet.string("name"))
+  }
+
+  object Lists extends Enumeration {
+    type BlockList = Value
+    val easylist: BlockList = Value(1, "easylist")
+    val easyprivacy: BlockList = Value(2, "easyprivacy")
+    val easylistgermany: BlockList = Value(4, "easylistgermany")
+    val easylist_noelemhide: BlockList = Value(5, "easylist_noelemhide")
+    val peterlowe: BlockList = Value(6, "peterlowe")
+  }
+
 }

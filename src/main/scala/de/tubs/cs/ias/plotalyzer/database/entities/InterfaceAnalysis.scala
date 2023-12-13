@@ -148,9 +148,12 @@ object InterfaceAnalysis {
     )
   }
 
-  def getLatestSuccessfulAnalyses(experiment: Experiment): List[InterfaceAnalysis] = {
+  def getLatestAnalysesWithCondition(
+    experiment: Experiment,
+    condition: InterfaceAnalysis => Boolean = _ => true
+  ): List[InterfaceAnalysis] = {
     get(experiment)
-      .filter(_.isSuccess)
+      .filter(condition)
       .groupBy(_.getApp)
       .view
       .mapValues(analyses =>

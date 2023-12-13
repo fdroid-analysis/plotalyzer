@@ -84,15 +84,11 @@ case class Roaming(override val value: String, override val encoding: Encoding) 
 case class Uptime(override val value: String, override val encoding: Encoding) extends PII
 case class RamTotal(override val value: String, override val encoding: Encoding) extends PII
 case class RamFree(override val value: String, override val encoding: Encoding) extends PII
-case class NetworkConnectionType(override val value: String, override val encoding: Encoding)
-    extends PII
-case class SignalStrengthCellular(override val value: String, override val encoding: Encoding)
-    extends PII
-case class SignalStrengthWifi(override val value: String, override val encoding: Encoding)
-    extends PII
+case class NetworkConnectionType(override val value: String, override val encoding: Encoding) extends PII
+case class SignalStrengthCellular(override val value: String, override val encoding: Encoding) extends PII
+case class SignalStrengthWifi(override val value: String, override val encoding: Encoding) extends PII
 case class IsCharging(override val value: String, override val encoding: Encoding) extends PII
-case class BatteryPercentage(override val value: String, override val encoding: Encoding)
-    extends PII
+case class BatteryPercentage(override val value: String, override val encoding: Encoding) extends PII
 case class BatteryState(override val value: String, override val encoding: Encoding) extends PII
 case class DiskTotal(override val value: String, override val encoding: Encoding) extends PII
 case class DiskFree(override val value: String, override val encoding: Encoding) extends PII

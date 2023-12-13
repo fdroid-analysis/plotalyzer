@@ -1,3 +1,5 @@
+import sbt.util
+
 name := "plotalyzer"
 ThisBuild / scalaVersion := "2.13.7"
 organization := "de.tubs.cs.ias"

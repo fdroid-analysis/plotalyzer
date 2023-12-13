@@ -45,7 +45,7 @@ object Database {
   ): Unit = {
     if (!connectionPools.contains(poolName)) {
       val settings: ConnectionPoolSettings =
-        ConnectionPoolSettings(initialSize = 10, maxSize = 10, driverName = "org.postgresql.Driver")
+        ConnectionPoolSettings(initialSize = 10, maxSize = 50, driverName = "org.postgresql.Driver")
       val url = s"jdbc:postgresql://$host:$port/$database"
       ConnectionPool.add(poolName, url, user, pwd, settings)
       connectionPools.add(poolName)

@@ -1,6 +1,8 @@
 package de.tubs.cs.ias.plotalyzer.cli
 import de.halcony.argparse.{Parser, ParsingResult}
 import de.tubs.cs.ias.plotalyzer.analysis.privacylabel.{FDroidPrivacyLabel, PrivacyLabelAnalysis}
+import de.tubs.cs.ias.plotalyzer.database.entities.adblock.FilterList
+import de.tubs.cs.ias.plotalyzer.database.entities.adblock.FilterList.Lists.BlockList
 import spray.json.{JsString, JsValue}
 
 object PrivacyLabelCommand extends Command {
@@ -18,12 +20,12 @@ object PrivacyLabelCommand extends Command {
     val outputJson =
       labelFormat match {
         case "fdroid" =>
-          val listToLabels = Map(
-            FilterListIds.easylist -> List("Ads"),
-            FilterListIds.easyprivacy -> List("Tracking"),
-            FilterListIds.easylist_noelemhide -> List("Ads"),
-            FilterListIds.easylistgermany -> List("Ads"),
-            FilterListIds.peterlowe -> List("Tracking", "Ads")
+          val listToLabels: Map[BlockList, List[String]] = Map(
+            FilterList.Lists.easylist -> List("Ads"),
+            FilterList.Lists.easyprivacy-> List("Tracking"),
+            FilterList.Lists.easylist_noelemhide -> List("Ads"),
+            FilterList.Lists.easylistgermany -> List("Ads"),
+            FilterList.Lists.peterlowe -> List("Tracking", "Ads")
           )
           PrivacyLabelAnalysis.privacyLabelConsistency(
             experimentId,
@@ -31,19 +33,11 @@ object PrivacyLabelCommand extends Command {
             ".json",
             (appId, fileNames) => fileNames.find(_.startsWith(appId)),
             FDroidPrivacyLabel.read,
-            listToLabels.keySet.toList
+            listToLabels.keySet.map(_.id).toList
           )
         case _ => JsString("labelFormat not implemented") // implement me
 
       }
     outputJson
-  }
-
-  private object FilterListIds {
-    val easylist = 1
-    val easyprivacy = 2
-    val easylistgermany = 4
-    val easylist_noelemhide = 5
-    val peterlowe = 6
   }
 }
