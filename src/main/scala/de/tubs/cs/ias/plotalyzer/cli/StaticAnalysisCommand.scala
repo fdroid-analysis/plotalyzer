@@ -1,5 +1,5 @@
 package de.tubs.cs.ias.plotalyzer.cli
-import de.halcony.argparse.{Parser, ParsingResult}
+import de.halcony.argparse.{OptionalValue, Parser, ParsingResult}
 import de.tubs.cs.ias.plotalyzer.database.entities.exodus.{AppLibrary, AppTracker, Tracker}
 import de.tubs.cs.ias.plotalyzer.json.{ExodusOutput, ExodusTrackerIndex}
 import de.tubs.cs.ias.plotalyzer.json.ExodusOutputJsonProtocol.exodusOutputFormat
@@ -22,6 +22,7 @@ object StaticAnalysisCommand extends Command {
       .addSubparser(
         Parser("evaluate", "evaluate scan results")
           .addPositional("exodusFile", "an exodus_tracker json file to use")
+          .addOptional("exportAppIds", "ids", "exportIds", None, "creates a file with app ids that contain a tracker")
           .addDefault[ParsingResult => JsValue]("func", this.exodusEvaluateExperiment)
       )
   )
@@ -88,6 +89,7 @@ object StaticAnalysisCommand extends Command {
   private def exodusEvaluateExperiment(pargs: ParsingResult): JsValue = {
     val experimentId = pargs.getValue[String]("id").toInt
     val exodusFilePath = pargs.getValue[String]("exodusFile")
+    val exportIds = pargs.get[OptionalValue[String]]("exportAppIds").value
     val exodusIndex = JsonParser(fsi.readInTextFile(exodusFilePath)).convertTo[ExodusTrackerIndex]
     val allTrackers = Tracker.getAll
     val allTrackerNames = allTrackers.map(tracker => tracker.id -> tracker.name).toMap
@@ -139,18 +141,26 @@ object StaticAnalysisCommand extends Command {
       categoryApps
         .view
         .mapValues { apps =>
-          apps.map { appVersionTrackers =>
+          apps.map { app_version_trackers =>
             JsObject(
-              "appId" -> JsString(appVersionTrackers._1),
-              "versionCode" -> JsNumber(appVersionTrackers._2),
-              "trackers" -> JsArray(appVersionTrackers._3.map(JsString.apply).toVector)
-            )
+              "appId" -> JsString(app_version_trackers._1),
+              "versionCode" -> JsNumber(app_version_trackers._2),
+              "trackers" -> JsArray(app_version_trackers._3.map(JsString.apply).toVector)
+              )
           }
         }
         .mapValues(_.toVector)
         .mapValues(apps => JsArray(apps))
         .toMap
     outputJson = outputJson ++ Map("experimentId" -> JsNumber(experimentId))
+
+    exportIds match {
+      case Some(filePath) =>
+            val appIds = categoryApps.values.flatMap(_.map(_._1)).toSet
+            val content = appIds.mkString("\n")
+            fsi.writeFile(content, filePath)
+      case None =>
+    }
 
     JsObject(outputJson)
   }
