@@ -58,6 +58,7 @@ object TrafficCommand extends Command {
         .addSubparser(
           Parser("llm", "use LLM to try to extract PII from traffic")
             .addOptional("llmConfig", "c", "config", Some("./resources/trafficCollection/llm.conf"))
+            .addOptional("only", "o", "only", None, "only analyze appIds contained in a file")
             .addDefault[ParsingResult => JsValue]("func", generateTrafficCollectionAnalysisLlmMain)
         )
     )
@@ -262,8 +263,8 @@ object TrafficCommand extends Command {
     val similarity = pargs.getValue[String]("similarity").toFloat
     val experiment = Experiment.apply(experimentId.toString)
     val recipientsRequestIds = RequestRecipient.getAll.map(_.requestId)
-    val analysis = experiment.getLatestSuccessfulAppInterfaceAnalysesWithTraffic
-    analysis.foreach { analysis =>
+    val analyses = experiment.getLatestSuccessfulAppInterfaceAnalysesWithTraffic
+    analyses.foreach { analysis =>
       val appId = analysis.getApp.id.split('.').drop(1).mkString(".")
       val requests = analysis.getTrafficCollections.flatMap(_.getRequests).filter(_.error.isEmpty)
       requests.foreach { request =>
@@ -288,6 +289,8 @@ object TrafficCommand extends Command {
 
   private def generateTrafficCollectionAnalysisLlmMain(pargs: ParsingResult): JsValue = {
     val experimentId = pargs.getValue[String]("id")
+    val onlyFile = pargs.get[OptionalValue[String]]("only")
+    // call python
     JsObject("ey" -> JsString("yoyo"))
   }
 }

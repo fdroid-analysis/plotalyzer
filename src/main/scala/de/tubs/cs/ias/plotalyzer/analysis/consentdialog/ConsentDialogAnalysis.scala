@@ -91,27 +91,24 @@ case class ConsentDialogAnalysis(
 
   private def getTrafficSummary: JsObject = {
     val successfulAnalyses = appAnalysis.filter(_.isValidConsentDialogMeasurement)
-    val anyTraffic = successfulAnalyses.filter(analysis =>
-      analysis
-        .getInterfaceAnalysis
-        .find(_.getDescription == "Simple Traffic Collection")
-        .get // validDialogMeasurement has traffic collection
-        .getTrafficCollections.flatMap(_.getRequests).nonEmpty
-    )
+    val getAnalysisRequestIds: AppConsentDialogAnalysis => List[Int] = analysis => analysis
+      .getInterfaceAnalysis
+      .filter(_.getDescription == "Simple Traffic Collection")
+      .filter(_.isSuccess)
+      .flatMap(_.getTrafficCollections)
+      .flatMap(_.getRequests)
+      .filter(_.error.isEmpty)
+      .map(_.id)
+    val anyTraffic = successfulAnalyses.filter(analysis => getAnalysisRequestIds(analysis).nonEmpty)
     val filterLists = List(
       FilterList.Lists.easylist.id,
       FilterList.Lists.easylist_noelemhide.id,
       FilterList.Lists.easyprivacy.id,
-      FilterList.Lists.peterlowe.id
+      FilterList.Lists.peterlowe.id,
+      3, 7, 8, 9, 10, 11, 12, 13
     )
     val matchedTraffic = anyTraffic.filter(analysis => {
-      val requestIds = analysis
-        .getInterfaceAnalysis
-        .find(_.getDescription == "Simple Traffic Collection")
-        .get
-        .getTrafficCollections
-        .flatMap(_.getRequests)
-        .map(_.id)
+      val requestIds = getAnalysisRequestIds(analysis)
       val matches = RequestMatch.getRequestMatches(requestIds, filterLists, matchIsIn = List(true))
       matches.nonEmpty
     })
